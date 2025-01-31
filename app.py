@@ -6,17 +6,23 @@ import fitz
 HF_API_KEY = st.secrets["hf_key"]
 MODEL_NAME = "google/gemma-2-2b-it"  # Change to other models if needed
 
-PDF_PATH = "/home/anna/Downloads/Basiswissen Allgemeinmedizin-1.pdf"
+#PDF_PATH = "/home/anna/Downloads/Basiswissen Allgemeinmedizin-1.pdf"
 
 # Function to extract text from PDF
-def extract_text_from_pdf(pdf_path):
+# def extract_text_from_pdf(pdf_path):
+#     pdf_text = ""
+#     doc = fitz.open(pdf_path)  # Open the PDF from file path
+#     for page in doc:
+#         pdf_text += page.get_text() + "\n"
+#     print("Successfully extracted text from pdf file. Length of text:", len(pdf_text))
+#     return pdf_text.strip()
+
+def extract_text_from_pdf(pdf_file):
     pdf_text = ""
-    doc = fitz.open(pdf_path)  # Open the PDF from file path
+    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")  # Read PDF
     for page in doc:
         pdf_text += page.get_text() + "\n"
-    print("Successfully extracted text from pdf file. Length of text:", len(pdf_text))
     return pdf_text.strip()
-
 
 # Function to query Hugging Face API
 def query_model(prompt, context=""):
@@ -42,13 +48,20 @@ def query_model(prompt, context=""):
 
 
 # Extract text from the specified PDF
-pdf_text = extract_text_from_pdf(PDF_PATH)
+#pdf_text = extract_text_from_pdf(PDF_PATH)
 
 # Streamlit UI
 st.title("🗨️ Patient Simulator")
 
 # Display PDF filename as a subtitle
-st.subheader(f"(Uploaded: {PDF_PATH})")
+#st.subheader(f"(Uploaded: {PDF_PATH})")
+
+# PDF Upload
+pdf_text = ""
+pdf_file = st.file_uploader("Upload a PDF file", type="pdf")
+if pdf_file:
+    pdf_text = extract_text_from_pdf(pdf_file)
+    st.success("PDF uploaded and processed!")
 
 # Chat history
 if "messages" not in st.session_state:
