@@ -3,7 +3,8 @@ import requests
 import fitz
 
 # Hugging Face API settings
-HF_API_KEY = st.secrets["hf_key"]
+#HF_API_KEY = st.secrets["hf_key"]
+HF_API_KEY= st.text_input("HuggingFace API Key","press Enter input")
 MODEL_NAME = "google/gemma-2-2b-it"  # Change to other models if needed
 
 #PDF_PATH = "/home/anna/Downloads/Basiswissen Allgemeinmedizin-1.pdf"
