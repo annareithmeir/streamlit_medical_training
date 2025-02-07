@@ -9,10 +9,12 @@ def extract_text_from_pdf(pdf_file):
         pdf_text += page.get_text() + "\n"
     return pdf_text.strip()
 
-def query_model(prompt, context=""):
+
+def query_model(prompt, history, context="", instruction=""):
     headers = {"Authorization": f"Bearer {st.session_state.hf_api_key}"}
-    full_prompt = f"Context: {context}\n\nUser: {prompt}\n\nBot:"
-    payload = {"inputs": prompt, "parameters": {"max_new_tokens": 200}}
+    full_prompt = f"System Message: {instruction}\nContext: {context}\nCurrent Conversation:\n{history}\nUser: {prompt}\nBot:"
+
+    payload = {"inputs": full_prompt, "parameters": {"max_new_tokens": 400}}
 
     response = requests.post(
         f"https://api-inference.huggingface.co/models/{MODEL_NAME}",
@@ -21,7 +23,9 @@ def query_model(prompt, context=""):
     )
 
     if response.status_code == 200:
+
         generated_text = response.json()[0]["generated_text"]
+        generated_text= generated_text.split("Bot:")[-1]
 
         # Remove the user's input from the model's response
         if generated_text.startswith(prompt):
@@ -29,6 +33,7 @@ def query_model(prompt, context=""):
         return generated_text.strip()
     else:
         return f"Error: {response.json()}"
+
 
 # Hugging Face API settings
 #HF_API_KEY = st.secrets["hf_key"]
@@ -58,11 +63,13 @@ if apply_key:
 st.sidebar.markdown("---")
 instruction = st.sidebar.text_area("Enter an initial system prompt")
 instruction_apply_key = st.sidebar.button("Upload instruction")
+st.session_state.instruction_applied = False
 
 if instruction_apply_key:
     st.session_state.instruction_applied = True
-    st.session_state.context = f"System Prompt: {instruction}"
-    print(st.session_state.context)
+    st.session_state.instruction = instruction
+    #st.session_state.context = f"System Prompt: {instruction}"
+    #print(st.session_state.context)
     st.sidebar.write("✅ Instruction uploaded")
 
 st.sidebar.markdown("---")
@@ -70,10 +77,7 @@ st.sidebar.markdown("---")
 context_file = st.sidebar.file_uploader("knowledge database PDF file", type=["pdf"])
 apply_context = st.sidebar.button("Upload Context")
 
-# # Store context status
-# if "context" not in st.session_state:
-#     st.session_state.context_applied = False
-
+st.session_state.context=False
 # Save context in session state
 if apply_context:
     pdf_text = extract_text_from_pdf(context_file)
@@ -94,7 +98,8 @@ for msg in st.session_state.messages:
     if msg["role"] == "user":
         st.markdown(f"<div style='text-align: right; background-color: #6082B6; padding: 10px; border-radius: 10px; max-width: 60%; margin-left: auto;'>{msg['content']}</div>", unsafe_allow_html=True)
     else:
-        st.markdown(f"<div style='padding: 10px; border-radius: 10px; max-width: 80%;'>{msg['content']}</div>", unsafe_allow_html=True)
+        #st.markdown(f"<div style='padding: 10px; border-radius: 10px; max-width: 80%;'>{msg['content']}</div>", unsafe_allow_html=True)
+        st.markdown(msg["content"])  # Properly renders Markdown formatting
 
 # User input
 if user_input := st.chat_input("Type your message..."):
@@ -107,7 +112,10 @@ if user_input := st.chat_input("Type your message..."):
         st.session_state.messages.append({"role": "user", "content": "Doctor:   " + user_input})
 
         # Get model response using PDF content
-        response = query_model(user_input, context=st.session_state.context)
+        if st.session_state.instruction_applied:
+            response = query_model(user_input, history= st.session_state.messages, context=st.session_state.context, instruction= st.session_state.instruction)
+        else:
+            response = query_model(user_input, history= st.session_state.messages, context=st.session_state.context)
 
         # Add model response to history
         st.session_state.messages.append({"role": "bot", "content": response})
