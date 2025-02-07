@@ -63,21 +63,21 @@ if apply_key:
 st.sidebar.markdown("---")
 instruction = st.sidebar.text_area("Enter an initial system prompt")
 instruction_apply_key = st.sidebar.button("Upload instruction")
-st.session_state.instruction_applied = False
+if "instruction_applied" not in st.session_state:
+    st.session_state.instruction_applied = False
 
 if instruction_apply_key:
     st.session_state.instruction_applied = True
     st.session_state.instruction = instruction
-    #st.session_state.context = f"System Prompt: {instruction}"
-    #print(st.session_state.context)
     st.sidebar.write("✅ Instruction uploaded")
-
 st.sidebar.markdown("---")
 
 context_file = st.sidebar.file_uploader("knowledge database PDF file", type=["pdf"])
 apply_context = st.sidebar.button("Upload Context")
+if "context_applied" not in st.session_state:
+    st.session_state.context_applied = False
+    st.session_state.context=False
 
-st.session_state.context=False
 # Save context in session state
 if apply_context:
     pdf_text = extract_text_from_pdf(context_file)
@@ -103,8 +103,12 @@ for msg in st.session_state.messages:
 
 # User input
 if user_input := st.chat_input("Type your message..."):
-    if not st.session_state.context:
+    if not st.session_state.context_applied and not st.session_state.instruction_applied:
+        st.warning("No context file used and no system instruction given.")
+    elif not st.session_state.context_applied and st.session_state.instruction_applied:
         st.warning("No context file used.")
+    elif not st.session_state.instruction_applied and st.session_state.context_applied:
+        st.warning("No system instruction given.")
     if not st.session_state.hf_api_key:
         st.warning("Please enter and apply a valid Hugging Face API key.")
     else:

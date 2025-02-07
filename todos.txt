@@ -1,0 +1,10 @@
+UI
+
+- green checkmarks disappear after chat message enter
+- combine buttons?
+
+make menu only available to specific user eg with password
+
+change LLM to something more powerful
+
+test if context actually used, e.g. with small pdf file and specific question about it.
