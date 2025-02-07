@@ -2,22 +2,6 @@ import streamlit as st
 import requests
 import fitz
 
-# Hugging Face API settings
-#HF_API_KEY = st.secrets["hf_key"]
-HF_API_KEY= st.text_input("HuggingFace API Key","press Enter input")
-MODEL_NAME = "google/gemma-2-2b-it"  # Change to other models if needed
-
-#PDF_PATH = "/home/anna/Downloads/Basiswissen Allgemeinmedizin-1.pdf"
-
-# Function to extract text from PDF
-# def extract_text_from_pdf(pdf_path):
-#     pdf_text = ""
-#     doc = fitz.open(pdf_path)  # Open the PDF from file path
-#     for page in doc:
-#         pdf_text += page.get_text() + "\n"
-#     print("Successfully extracted text from pdf file. Length of text:", len(pdf_text))
-#     return pdf_text.strip()
-
 def extract_text_from_pdf(pdf_file):
     pdf_text = ""
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")  # Read PDF
@@ -25,9 +9,8 @@ def extract_text_from_pdf(pdf_file):
         pdf_text += page.get_text() + "\n"
     return pdf_text.strip()
 
-# Function to query Hugging Face API
 def query_model(prompt, context=""):
-    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+    headers = {"Authorization": f"Bearer {st.session_state.hf_api_key}"}
     full_prompt = f"Context: {context}\n\nUser: {prompt}\n\nBot:"
     payload = {"inputs": prompt, "parameters": {"max_new_tokens": 200}}
 
@@ -47,46 +30,96 @@ def query_model(prompt, context=""):
     else:
         return f"Error: {response.json()}"
 
+# Hugging Face API settings
+#HF_API_KEY = st.secrets["hf_key"]
+MODEL_NAME = "google/gemma-2-2b-it"  # Change to other models if needed
+#MODEL_NAME = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+#PDF_PATH = "/home/anna/Downloads/Basiswissen Allgemeinmedizin-1.pdf"
+#HF_API_URL = "https://api-inference.huggingface.co/models/deepseek/deepseek-chat"
 
-# Extract text from the specified PDF
-#pdf_text = extract_text_from_pdf(PDF_PATH)
+#  Sidebar for file upload and system prompt
+st.sidebar.title("Setup Menu")
 
-# Streamlit UI
-st.title("🗨️ Patient Simulator")
+# API Key Input
+hf_api_key = st.sidebar.text_input("Hugging Face API Key")
+apply_key = st.sidebar.button("Apply")
 
-# Display PDF filename as a subtitle
-#st.subheader(f"(Uploaded: {PDF_PATH})")
+# Store API key and status in session state
+if "hf_api_key" not in st.session_state:
+    st.session_state.hf_api_key = None
+if "api_key_applied" not in st.session_state:
+    st.session_state.api_key_applied = False
+
+if apply_key:
+    st.session_state.hf_api_key = hf_api_key
+    st.session_state.api_key_applied = True
+
+# Show checkmark if API key is applied
+if st.session_state.api_key_applied:
+    st.sidebar.write("✅ Key Applied")
+
+st.sidebar.markdown("---")
+system_prompt = st.sidebar.text_area("Enter an initial system prompt")
+prompt_apply_key = st.sidebar.button("Upload instruction")
+if prompt_apply_key:
+    st.sidebar.write("✅ Key Applied")
+st.sidebar.markdown("---")
+
+context_file = st.sidebar.file_uploader("knowledge database PDF file", type=["pdf"])
+apply_context = st.sidebar.button("Upload Context")
+
+# Store context status
+if "context_applied" not in st.session_state:
+    st.session_state.context_applied = False
 
 # PDF Upload
 pdf_text = ""
-pdf_file = st.file_uploader("Upload a PDF file", type="pdf")
-if pdf_file:
-    pdf_text = extract_text_from_pdf(pdf_file)
-    st.success("PDF uploaded and processed!")
+# context_file = st.file_uploader("Upload a PDF file", type="pdf")
+if context_file:
+    pdf_text = extract_text_from_pdf(context_file)
+
+# Save context in session state
+if apply_context:
+    st.session_state.context = f"System Prompt: {system_prompt}\nFile Content: {pdf_text}"
+    st.session_state.context_applied = True
+
+# Save context in session state
+if "context" not in st.session_state:
+    st.session_state.context = ""
+
+if apply_context:
+    st.session_state.context = f"System Prompt: {system_prompt}\nFile Content: {pdf_text}"
+    st.sidebar.write("✅ Context uploaded")
+
+# Streamlit UI
+st.title("🗨️ Patient Simulator")
 
 # Chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Display chat history
+for msg in st.session_state.messages:
+    if msg["role"] == "user":
+        st.markdown(f"<div style='text-align: right; background-color: #6082B6; padding: 10px; border-radius: 10px; max-width: 60%; margin-left: auto;'>{msg['content']}</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<div style='padding: 10px; border-radius: 10px; max-width: 80%;'>{msg['content']}</div>", unsafe_allow_html=True)
+
 # User input
 if user_input := st.chat_input("Type your message..."):
-    st.session_state.messages.append(("user", user_input))
-
-    # Get model response using PDF content
-    response = query_model(user_input, context=pdf_text)
-    st.session_state.messages.append(("bot", response))
-
-# Display messages side by side
-for role, text in st.session_state.messages:
-    col1, col2 = st.columns([1, 1])  # Two equal columns
-
-    if role == "user":
-        with col1:
-            st.markdown(f"<div style='text-align: left; padding: 8px; background-color: #424242; border-radius: 10px; width: fit-content;'>{text}</div>", unsafe_allow_html=True)
-        with col2:
-            st.write("")  # Empty to keep alignment
+    if not st.session_state.context:
+        st.warning("No context file used.")
+    if not st.session_state.hf_api_key:
+        st.warning("Please enter and apply a valid Hugging Face API key.")
     else:
-        with col1:
-            st.write("")  # Empty for alignment
-        with col2:
-            st.markdown(f"<div style='text-align: right; padding: 8px; background-color: #1E88E5; border-radius: 10px; width: fit-content;'>{text}</div>", unsafe_allow_html=True)
+        # Add user message to history
+        st.session_state.messages.append({"role": "user", "content": "Doctor:   " + user_input})
+
+        # Get model response using PDF content
+        response = query_model(user_input, context=st.session_state.context)
+
+        # Add model response to history
+        st.session_state.messages.append({"role": "bot", "content": response})
+
+        # Refresh the page to display messages correctly
+        st.rerun()
