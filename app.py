@@ -53,42 +53,33 @@ if "api_key_applied" not in st.session_state:
 if apply_key:
     st.session_state.hf_api_key = hf_api_key
     st.session_state.api_key_applied = True
-
-# Show checkmark if API key is applied
-if st.session_state.api_key_applied:
     st.sidebar.write("✅ Key Applied")
 
 st.sidebar.markdown("---")
-system_prompt = st.sidebar.text_area("Enter an initial system prompt")
-prompt_apply_key = st.sidebar.button("Upload instruction")
-if prompt_apply_key:
-    st.sidebar.write("✅ Key Applied")
+instruction = st.sidebar.text_area("Enter an initial system prompt")
+instruction_apply_key = st.sidebar.button("Upload instruction")
+
+if instruction_apply_key:
+    st.session_state.instruction_applied = True
+    st.session_state.context = f"System Prompt: {instruction}"
+    print(st.session_state.context)
+    st.sidebar.write("✅ Instruction uploaded")
+
 st.sidebar.markdown("---")
 
 context_file = st.sidebar.file_uploader("knowledge database PDF file", type=["pdf"])
 apply_context = st.sidebar.button("Upload Context")
 
-# Store context status
-if "context_applied" not in st.session_state:
-    st.session_state.context_applied = False
+# # Store context status
+# if "context" not in st.session_state:
+#     st.session_state.context_applied = False
 
-# PDF Upload
-pdf_text = ""
-# context_file = st.file_uploader("Upload a PDF file", type="pdf")
-if context_file:
+# Save context in session state
+if apply_context:
     pdf_text = extract_text_from_pdf(context_file)
-
-# Save context in session state
-if apply_context:
-    st.session_state.context = f"System Prompt: {system_prompt}\nFile Content: {pdf_text}"
+    print(pdf_text[:500])
+    st.session_state.context = st.session_state.context + f"\nFile Content: {pdf_text}"
     st.session_state.context_applied = True
-
-# Save context in session state
-if "context" not in st.session_state:
-    st.session_state.context = ""
-
-if apply_context:
-    st.session_state.context = f"System Prompt: {system_prompt}\nFile Content: {pdf_text}"
     st.sidebar.write("✅ Context uploaded")
 
 # Streamlit UI
